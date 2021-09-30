@@ -1,2 +1,2 @@
 # PPJ
-vežbanje za ispit iz Prevođenja programskih jezika
+Vežbanje za ispit iz Prevođenja programskih jezika.
