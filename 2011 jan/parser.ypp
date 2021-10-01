@@ -1,0 +1,161 @@
+%{
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <utility>
+#include <map>
+#include "razlomak.hpp"
+
+using namespace std;
+
+void yyerror(string s) {
+    cerr << s << endl;
+    exit(EXIT_FAILURE);
+}
+
+int yylex();
+
+map<string, Razlomak> tablica;
+%}
+
+%union {
+    int i;
+    Razlomak *r;
+    string *s;
+}
+
+%type <r> Razlomak E 
+
+%token <i> num_token
+%token <s> id_token
+%token fraction_token print_token
+%token dodaj_token oduzmi_token pomnozi_token podeli_token
+%token check_token numerator_token denominator_token double_token
+
+%nonassoc dodaj_token oduzmi_token pomnozi_token podeli_token jednako_token
+%left '+' '-'
+%left '*' '/'
+
+%%
+Program: Program Naredba ';' '\n' {
+
+}
+| Naredba ';' '\n' {
+
+}
+;
+
+Naredba: print_token E {
+    $2->skrati();
+    $2->ispisi();
+}
+| fraction_token id_token '=' E {
+    tablica[*$2] = *$4;
+    delete $2;
+    delete $4;
+}
+| id_token '=' E {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        tablica[*$1] = *$3;
+        delete $1;
+        delete $3;
+    }
+}
+| id_token dodaj_token E {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        tablica[*$1] = tablica[*$1].saberi(*$3);
+        delete $1;
+        delete $3;
+    }
+}
+| id_token oduzmi_token E {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        tablica[*$1] = tablica[*$1].oduzmi(*$3);
+        delete $1;
+        delete $3;
+    }
+}
+| id_token pomnozi_token E {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        tablica[*$1] = tablica[*$1].pomnozi(*$3);
+        delete $1;
+        delete $3;
+    }
+}
+| id_token podeli_token E {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        tablica[*$1] = tablica[*$1].podeli(*$3);
+        delete $1;
+        delete $3;
+    }
+}
+| check_token E jednako_token E {
+    $2->proveri(*$4);
+}
+| numerator_token E {
+    $2->brojilac();
+}
+| denominator_token E {
+    $2->imenilac();
+}
+| double_token E {
+    $2->vrednost();
+}
+;
+
+E: E '+' E {
+    $$ = new Razlomak($1->saberi(*$3));
+    delete $1;
+    delete $3;
+}
+| E '-' E {
+    $$ = new Razlomak($1->oduzmi(*$3));
+    delete $1;
+    delete $3;
+}
+| E '*' E {
+    $$ = new Razlomak($1->pomnozi(*$3));
+    delete $1;
+    delete $3;
+}
+| E '/' E {
+    $$ = new Razlomak($1->podeli(*$3));
+    delete $1;
+    delete $3;
+}
+| '(' E ')' {
+    $$ = $2;
+}
+| Razlomak {
+    $$ = $1;
+}
+| id_token {
+    if (tablica.find(*$1) == tablica.end())
+        yyerror("Promenljiva nije definisana");
+    else {
+        $$ = new Razlomak(tablica[*$1]);
+        delete $1;
+    }
+}
+;
+
+Razlomak: '[' num_token ',' num_token ']' {
+    $$ = new Razlomak(make_pair($2, $4));
+}
+;
+
+%%
+int main() {
+    yyparse();
+    return 0;
+}

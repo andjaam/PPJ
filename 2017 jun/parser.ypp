@@ -1,0 +1,119 @@
+%{
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <map>
+#include "lista.hpp"
+
+using namespace std;
+
+void yyerror(string s) {
+    cerr << s << endl;
+    exit(EXIT_FAILURE);
+}
+
+int yylex();
+
+map<string, Lista> tablica;
+%}
+
+%union {
+    int i;
+    Lista *l;
+    string *s;
+}
+
+%type <l> NizBrojeva Lista NizListi
+
+%token <i> num_token 
+%token <s> id_token
+%token print_token head_token tail_token
+%token sort_token number_token scalar_token jednakost_token
+
+%%
+Program: Program Naredba ';' '\n' {
+
+}
+| Naredba ';' '\n' {
+
+}
+;
+
+Naredba: print_token NizListi {
+    $2->ispisi();
+}
+| head_token NizListi {
+    $2->izvuciGlavu();
+}
+| NizListi '(' num_token ')' {
+    $1->izvuciElement($3);
+}
+| sort_token NizListi {
+    $2->sortiraj();
+}
+| number_token NizListi {
+    $2->vratiDuzinu();
+}
+| scalar_token Lista ',' Lista {
+    $2->skalarniProizvod(*$4);
+}
+| Lista jednakost_token Lista {
+    if ($1->jednaki(*$3) == 0)
+        cout << "Tacno" << endl;
+    else
+        cout << "Netacno" << endl;
+}
+| id_token '=' NizListi {
+    tablica[*$1] = *$3;
+    delete $1;
+    delete $3;
+}
+;
+
+NizListi: NizListi '.' Lista {
+    $1->nadovezi(*$3);
+    $$ = $1;
+}
+| Lista {
+    $$ = $1;
+}
+;
+
+Lista: '[' NizBrojeva ']' {
+    $$ = $2;
+}
+| '[' ']' {
+    $$ = new Lista();
+}
+| tail_token Lista {
+    $$ = new Lista($2->izvuciRep());
+    delete $2;
+}
+| id_token {
+    if (tablica.find(*$1) == tablica.end()) {
+        cout << "Promenljiva " << *$1 << " nije definisana" << endl;
+        exit(EXIT_FAILURE);
+    }
+    else {
+        $$ = new Lista(tablica[*$1]);
+        delete $1;
+    }
+}
+;
+
+NizBrojeva: NizBrojeva ',' num_token {
+    $1->dodajElement($3);
+    $$ = $1;
+}
+| num_token {
+    $$ = new Lista();
+    $$->dodajElement($1);
+}
+;
+
+
+%%
+int main() {
+    yyparse();
+    return 0;
+}

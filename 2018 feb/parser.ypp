@@ -1,0 +1,109 @@
+%{
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <map>
+#include "formula.hpp"
+
+using namespace std;
+
+void yyerror(string s) {
+    cerr << s << endl;
+    exit(EXIT_FAILURE);
+}
+
+int yylex();
+
+map<string, Formula> tablica;
+%}
+
+%union {
+    string *s;
+    Formula *f;
+}
+
+%type <f> E
+
+%token <s> id_token
+%token true_token false_token undef_token 
+%token and_token or_token eq_token imp_token dodela_token 
+%token lista_token head_token tail_token num_token
+
+%left eq_token imp_token
+%left and_token or_token
+%nonassoc '!' 
+
+%%
+Program: Program Naredba '\n' {
+
+}
+| Naredba '\n' {
+
+}
+;
+
+Naredba: E {
+    $1->ispisi();
+}
+| id_token dodela_token E {
+    tablica[*$1] = *$3;
+}
+| lista_token dodela_token '[' NizIzraza ']'
+;
+
+NizIzraza: NizIzraza ',' E
+| E
+;
+
+E: E and_token E {
+    $$ = new Formula($1->i(*$3));
+    delete $1;
+    delete $3;
+}
+| E or_token E {
+    $$ = new Formula($1->ili(*$3));
+    delete $1;
+    delete $3;
+}
+| E eq_token E {
+    $$ = new Formula($1->ekv(*$3));
+    delete $1;
+    delete $3;
+}
+| E imp_token E {
+    $$ = new Formula($1->sledi(*$3));
+    delete $1;
+    delete $3;
+}
+| '!' E {
+    $$ = new Formula($2->negacija());
+    delete $2;
+}
+| '(' E ')' {
+    $$ = $2;
+}
+| id_token {
+    if (tablica.find(*$1) == tablica.end()) {
+        $$ = new Formula(-1);
+    }
+    else {
+        $$ = new Formula(tablica[*$1]);
+        delete $1;
+    }
+}
+| true_token {
+    $$ = new Formula(1);
+}
+| false_token {
+    $$ = new Formula(0);
+}
+| undef_token {
+    $$ = new Formula(-1);
+}
+;
+
+%%
+int main() {
+    yyparse();
+    return 0;
+}

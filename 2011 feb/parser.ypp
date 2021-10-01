@@ -1,0 +1,120 @@
+%{
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <set>
+#include <map>
+#include "skup.hpp"
+
+using namespace std;
+
+void yyerror(string s) {
+    cout << s << endl;
+    exit(EXIT_FAILURE);
+}
+
+int yylex();
+
+map<char, Skup> tablica;
+
+Skup *universal = nullptr;
+%}
+
+%union {
+    int i;
+    Skup *s;
+    char c;
+}
+
+%type <s> Elementi Skup
+
+%token <c> id_token
+%token <i> num_token
+%token dve_tacke_token
+%token print_token check_token card_token universal_token
+%token unija_token presek_token razlika_token
+
+%left unija_token presek_token razlika_token
+%nonassoc '~'
+
+%%
+Program: Program Naredba ';' '\n' {
+
+}
+| Naredba ';' '\n' {
+
+}
+;
+
+Naredba: id_token '=' Skup {
+    tablica[$1] = *$3;
+    delete $3;
+}
+| print_token Skup {
+    $2->ispisi();
+}
+| check_token num_token ':' Skup {
+    $4->proveri($2);
+}
+| check_token Skup '<' Skup {
+    $4->podskup(*$2);
+}
+| card_token Skup {
+    $2->kardinalnost();
+}
+| universal_token '=' Skup {
+    universal = $3;
+}
+;
+
+Skup: '{' Elementi '}' {
+    $$ = $2;
+}
+| num_token dve_tacke_token num_token {
+    $$ = new Skup();
+    for (int i=$1; i <= $3; i++)
+        $$->dodajElement(i);
+}
+| Skup unija_token   Skup {
+    $$ = new Skup($1->unija(*$3));
+    delete $1;
+    delete $3;
+}
+| Skup presek_token  Skup {
+    $$ = new Skup($1->presek(*$3));
+    delete $1;
+    delete $3;
+}
+| Skup razlika_token Skup {
+    $$ = new Skup($1->razlika(*$3));
+    delete $1;
+    delete $3;
+}
+| id_token {
+    $$ = new Skup(tablica[$1]);
+}
+| '~' Skup {
+    if (universal == nullptr)
+        yyerror("Univerzalni skup nije definisan");
+    else {
+        $$ = new Skup(universal->razlika(*$2));
+        delete $2;
+    }
+}
+;
+
+Elementi: Elementi ',' num_token {
+    $1->dodajElement($3);
+    $$ = $1;
+}
+| num_token {
+    $$ = new Skup();
+    $$->dodajElement($1);
+}
+;
+
+%%
+int main() {
+    yyparse();
+    return 0;
+}
